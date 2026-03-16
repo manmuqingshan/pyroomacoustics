@@ -23,7 +23,7 @@
 r"""
 This class can be used to set a Real Spherical Harmonics directivities.
 
-Real Spherical Harmonics are used in the `Ambisonic file format 
+Real Spherical Harmonics are used in the `Ambisonic file format
 <https://en.wikipedia.org/wiki/Ambisonic_data_exchange_formats>`_,
 which can be used to represent and restore a sound field at a given point.
 
@@ -52,12 +52,13 @@ Here is a simple example of capturing room impulse response using real spherical
 import numpy as np
 import scipy.special
 
+from ..doa import cart2spher
 from .base import Directivity
 
 
 def get_mn_in_acn_order(degree):
     """
-    Calculates the order-degree (m,n) pairs in the `Ambisonic Channel Number (ACN) 
+    Calculates the order-degree (m,n) pairs in the `Ambisonic Channel Number (ACN)
     <https://en.wikipedia.org/wiki/Ambisonic_data_exchange_formats>`_ format up to a given degree.
 
     Parameters
@@ -157,6 +158,12 @@ class RealSphericalHarmonicsDirectivity(Directivity):
     def filter_len_ir(self):
         return 1
 
+    def get_response_cartesian(self, directions, magnitude=False, frequency=None):
+        az, co, _ = cart2spher(directions.T)
+        return self.get_response(
+            az, co, magnitude=magnitude, frequency=frequency, degrees=False
+        )
+
     def get_response(
         self, azimuth, colatitude=None, magnitude=False, frequency=None, degrees=True
     ):
@@ -171,3 +178,7 @@ class RealSphericalHarmonicsDirectivity(Directivity):
             azimuth,
             condon_shortley_phase=self.condon_shortley_phase,
         )[:, np.newaxis]
+
+    def sample_rays(self, n_rays, rng=None):
+        """Not yet implemented."""
+        raise NotImplementedError

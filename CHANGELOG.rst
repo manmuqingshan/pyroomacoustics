@@ -11,6 +11,31 @@ adheres to `Semantic Versioning <http://semver.org/spec/v2.0.0.html>`_.
 `Unreleased`_
 -------------
 
+`Ray Tracing Directivity`
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+This new release introduces source and receiver directivities for the ray
+tracing simulation engine.
+
+- Support for source directivities in non-shoebox rooms using the images source
+  model.
+
+- New ``pyroomacoustics.random`` module that provides some primitives for
+  sampling at random from arbitrary distributions on the sphere. This is used
+  for source directivities in the ray tracing simulator.
+
+- New octave filter bank with energy conservation and perfect reconstruction
+  described in Antoni, "Orthogonal-like fractional-octave-band filters," 2009.
+  The filter bank is implemented in
+  ``pyroomacoustics.acoustics.AntoniOctaveFilterBank``.
+
+- A method ``sample_rays`` is added to the ``Directivity`` objects to provide a
+  unified interface to sample rays of sources used for ray tracing.
+
+- The class ``directivities.SphericalHistogram`` allows to collect and display
+  histograms on the sphere which can be useful to visualize and test
+  directivities.
+
 Added
 ~~~~~
 
@@ -18,8 +43,13 @@ Added
   package wide and some methods to set the seeds for this generator and that of
   the libroom module.
 
+- New methods to sample from spherical distributions either analytically, or by
+  rejection sampling are provided in ``random``.
+
 Changed
 ~~~~~~~
+
+- Bumped the numpy requirement to v1.17.0 to use the ``numpy.random.Generator`` objects.
 
 - Adds random "bending" of the rays to account for scattering in the ray tracing.
 
@@ -29,6 +59,9 @@ Changed
   log-domain. Adds option to fit in linear domain.
 
 - Add Directivity pattern for real spherical harmonics. 
+
+- Flip the settings to use ``octave_bands_keep_dc=True`` by default. There should be
+  minimal change due to the introduction of the high-pass filter in `0.9.0`_.
 
 Bugfix
 ~~~~~~

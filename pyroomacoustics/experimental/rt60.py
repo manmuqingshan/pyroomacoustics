@@ -31,8 +31,6 @@ References
     J. Acoust. Soc. Am., vol. 37, no. 3, pp. 409-412, Mar. 1968.
 """
 
-import math
-
 import numpy as np
 from scipy.optimize import curve_fit
 
@@ -49,7 +47,7 @@ def _fit_exp_and_extrapolate(
 
     # We use a least-square fit in log-domain as initialization.
     X = np.column_stack((t, np.ones(N)))
-    p, *_ = np.linalg.lstsq(X, data)
+    p, *_ = np.linalg.lstsq(X, data, rcond=None)
 
     if not linear_domain_fit:
         return extrapolate_value_db / p[0]
@@ -128,7 +126,10 @@ def measure_rt60(
         energy = np.maximum(energy, 0.0)
 
     # remove the possibly all zero tail
-    i_nz = np.max(np.where(energy > 0)[0])
+    def max_el(x):
+        return len(energy) if len(x) == 0 else max(x)
+
+    i_nz = max_el(np.where(energy > 0)[0])
     energy = energy[:i_nz]
     energy_db = 10 * np.log10(energy)
     energy_db -= energy_db[0]
