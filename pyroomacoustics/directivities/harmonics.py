@@ -52,8 +52,9 @@ Here is a simple example of capturing room impulse response using real spherical
 import numpy as np
 import scipy.special
 
-from ..doa import cart2spher
+from ..doa import cart2spher, spher2cart
 from .base import Directivity
+from .direction import Rotation3D
 
 
 def get_mn_in_acn_order(degree):
@@ -140,15 +141,43 @@ class RealSphericalHarmonicsDirectivity(Directivity):
         Order of the spherical harmonic.
     n: int
         Degree of the spherical harmonic.
+    orientation: Rotation3D, optional
+        A rotation to apply to the pattern. If not provided, the
+        identity rotation is used, i.e., the harmonic is evaluated in
+        its canonical frame with no reorientation.
     condon_shortley_phase: bool, optional
         If True, includes the Condon-Shortley phase factor (-1)^m. Default is False.
     """
 
-    def __init__(self, m, n, condon_shortley_phase: bool = False):
+    def __init__(self, m, n, orientation=None, condon_shortley_phase: bool = False):
         self.m = m
         self.n = n
-
         self.condon_shortley_phase = condon_shortley_phase
+
+        if orientation is None:
+            orientation = Rotation3D(
+                [0.0, 0.0, 0.0]
+            )  # identity rotation, no-op default
+        elif not isinstance(orientation, Rotation3D):
+            raise TypeError(
+                f"orientation must be a Rotation3D object, got {type(orientation).__name__}"
+            )
+        self._orientation = orientation
+
+    def set_orientation(self, orientation):
+        """
+        Set orientation of directivity pattern.
+
+        Parameters
+        ----------
+        orientation: Rotation3D
+            New direction for the directivity pattern.
+        """
+        if not isinstance(orientation, Rotation3D):
+            raise TypeError(
+                f"orientation must be a Rotation3D object, got {type(orientation).__name__}"
+            )
+        self._orientation = orientation
 
     @property
     def is_impulse_response(self):
@@ -159,18 +188,10 @@ class RealSphericalHarmonicsDirectivity(Directivity):
         return 1
 
     def get_response_cartesian(self, directions, magnitude=False, frequency=None):
-        az, co, _ = cart2spher(directions.T)
-        return self.get_response(
-            az, co, magnitude=magnitude, frequency=frequency, degrees=False
-        )
+        local_dirs = self._orientation.rotate_transpose(directions.T)
 
-    def get_response(
-        self, azimuth, colatitude=None, magnitude=False, frequency=None, degrees=True
-    ):
+        azimuth, colatitude, _ = cart2spher(local_dirs)
 
-        if degrees:
-            azimuth = np.radians(azimuth)
-            colatitude = np.radians(colatitude)
         return real_sph_harm(
             self.n,
             self.m,
@@ -178,6 +199,15 @@ class RealSphericalHarmonicsDirectivity(Directivity):
             azimuth,
             condon_shortley_phase=self.condon_shortley_phase,
         )[:, np.newaxis]
+
+    def get_response(
+        self, azimuth, colatitude=None, magnitude=False, frequency=None, degrees=True
+    ):
+
+        # world-frame cartesian unit vectors
+        directions = spher2cart(azimuth, colatitude, degrees=degrees).T
+
+        return self.get_response_cartesian(directions, magnitude=magnitude)
 
     def sample_rays(self, n_rays, rng=None):
         """Not yet implemented."""

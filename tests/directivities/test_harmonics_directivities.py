@@ -6,6 +6,25 @@ from pyroomacoustics.directivities.harmonics import (
     real_sph_harm,
 )
 
+FS = 16000
+MIC_POS = [1.0, 1.2, 1.5]
+SRC_POS = [3.5, 2.8, 1.7]
+ROOM_DIM = [6.0, 5.0, 3.0]
+
+
+def _simulate_rir(directivity, max_order=0):
+    """Run a room simulation with a single directional microphone."""
+    if max_order == 0:
+        room = pra.AnechoicRoom(fs=FS, dim=3)
+    else:
+        mat = pra.Material(energy_absorption=0.3)
+        room = pra.ShoeBox(ROOM_DIM, fs=FS, materials=mat, max_order=max_order)
+
+    room.add_source(SRC_POS)
+    room.add_microphone(MIC_POS, directivity=directivity)
+    room.compute_rir()
+    return room.rir[0][0]
+
 
 def test_harmonics_directivity():
     """
@@ -38,3 +57,69 @@ def test_harmonics_directivity():
     )
 
     np.allclose(rir_sum, sh, atol=1e-2)
+
+
+def test_harmonics_rotated_z():
+    """
+    Check that the `orientation` attribute of `RealSphericalHarmonicsDirectivity`
+    correctly rotates the pattern about the z-axis: an (m=1, n=1) harmonic
+    rotated by 90 degrees about z should produce the same RIR as an
+    unrotated (m=-1, n=1) harmonic at the same position.
+    """
+    max_order = 2
+
+    rot_90_z = pra.directivities.Rotation3D([90.0], "z", degrees=True)
+
+    dir_rotated = pra.directivities.RealSphericalHarmonicsDirectivity(
+        m=1, n=1, orientation=rot_90_z
+    )
+    dir_unrotated = pra.directivities.RealSphericalHarmonicsDirectivity(m=-1, n=1)
+
+    rir_rotated = _simulate_rir(dir_rotated, max_order=max_order)
+    rir_reference = _simulate_rir(dir_unrotated, max_order=max_order)
+
+    np.testing.assert_allclose(rir_rotated, rir_reference, atol=1e-9, rtol=0)
+
+
+def test_harmonics_rotated_y():
+    """
+    Check that the `orientation` attribute of `RealSphericalHarmonicsDirectivity`
+    correctly rotates the pattern about the y-axis: an (m=0, n=1) harmonic
+    rotated by 90 degrees about y should produce the same RIR as an
+    unrotated (m=1, n=1) harmonic at the same position.
+    """
+    max_order = 2
+
+    rot_90_y = pra.directivities.Rotation3D([90.0], "y", degrees=True)
+
+    dir_rotated = pra.directivities.RealSphericalHarmonicsDirectivity(
+        m=0, n=1, orientation=rot_90_y
+    )
+    dir_unrotated = pra.directivities.RealSphericalHarmonicsDirectivity(m=1, n=1)
+
+    rir_rotated = _simulate_rir(dir_rotated, max_order=max_order)
+    rir_reference = _simulate_rir(dir_unrotated, max_order=max_order)
+
+    np.testing.assert_allclose(rir_rotated, rir_reference, atol=1e-9, rtol=0)
+
+
+def test_harmonics_rotated_x():
+    """
+    Check that the `orientation` attribute of `RealSphericalHarmonicsDirectivity`
+    correctly rotates the pattern about the x-axis: an (m=0, n=1) harmonic
+    rotated by -90 degrees about x should produce the same RIR as an
+    unrotated (m=-1, n=1) harmonic at the same position.
+    """
+    max_order = 2
+
+    rot_m90_x = pra.directivities.Rotation3D([-90.0], "x", degrees=True)
+
+    dir_rotated = pra.directivities.RealSphericalHarmonicsDirectivity(
+        m=0, n=1, orientation=rot_m90_x
+    )
+    dir_unrotated = pra.directivities.RealSphericalHarmonicsDirectivity(m=-1, n=1)
+
+    rir_rotated = _simulate_rir(dir_rotated, max_order=max_order)
+    rir_reference = _simulate_rir(dir_unrotated, max_order=max_order)
+
+    np.testing.assert_allclose(rir_rotated, rir_reference, atol=1e-9, rtol=0)
